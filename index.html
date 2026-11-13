@@ -197,14 +197,17 @@
         <button class="opt" data-ship="fc"><strong>USPS First‑Class</strong><small>Éco · 1 à 3 sem. · ≤ 1,8 kg et 400 $</small></button>
         <button class="opt" data-ship="pmi"><strong>USPS Priority</strong><small>6 à 10 jours</small></button>
         <button class="opt" data-ship="fedex"><strong>FedEx Connect Plus</strong><small>2 à 7 jours · ≤ 1 000 $</small></button>
+        <button class="opt" data-ship="fedexip"><strong>FedEx Intl Priority</strong><small>1 à 3 jours · au‑delà de 1 000 $</small></button>
         <button class="opt" data-ship="dhl"><strong>DHL Express</strong><small>1 à 3 jours</small></button>
         <button class="opt" data-ship="custom"><strong>Tarif perso</strong><small>Ton propre barème</small></button>
       </div>
-      <div class="grid g3">
+      <div class="grid g2">
         <div><label>Poids par carte</label><div class="unit"><input data-k="ship.gCard"><span>g</span></div></div>
-        <div><label>Emballage</label><div class="unit"><input data-k="ship.gBase"><span>g</span></div></div>
-        <div><label>Remise mailbox sur le port</label><div class="unit"><input data-k="ship.discount"><span>%</span></div></div>
+        <div><label>Emballage et boîte</label><div class="unit"><input data-k="ship.gBase"><span>g</span></div></div>
+        <div class="cOnly"><label>Remise sur le tarif public</label><div class="unit"><input id="cDisc" inputmode="decimal"><span>%</span></div></div>
+        <div class="cOnly"><label>Surcharge carburant</label><div class="unit"><input id="cFuel" inputmode="decimal"><span>%</span></div></div>
       </div>
+      <p class="note" id="cNote"></p>
       <div class="grid g2" id="customShip" style="margin-top:12px">
         <div><label>Base du colis</label><div class="unit"><input data-k="ship.fixe"><span>$</span></div></div>
         <div><label>Par tranche de 100 g</label><div class="unit"><input data-k="ship.per100"><span>$</span></div></div>
@@ -226,7 +229,7 @@
           <div><label>Frais de gestion, fixe</label><div class="unit"><input id="gFix" inputmode="decimal"><span>€</span></div></div>
           <div><label>+ % des taxes avancées</label><div class="unit"><input id="gPct" inputmode="decimal"><span>%</span></div></div>
         </div>
-        <p class="note">Tarifs de transport : USPS = tarifs publics au 12 juillet 2026 (Europe de l'Ouest) ; FedEx International Connect Plus = grille 2026 zone France, hors surcharge carburant ; DHL Express = estimation à partir d'un tarif de plateforme d'envoi (≈ 36 $ pour 0,5 kg), à vérifier. Les mailbox ont souvent des tarifs négociés : ajuste la remise. À l'arrivée, chaque transporteur facture ses frais de gestion : La Poste (colis USPS) quand des taxes sont dues, FedEx au minimum 12 € + 0,90 € de frais d'entrée UE, DHL 21 € + 2 % des taxes pour un destinataire sans compte. Côté UE : droit forfaitaire de 3 € par catégorie d'article jusqu'à 150 € depuis le 1ᵉʳ juillet 2026, et frais de traitement de 2 € par catégorie depuis le 1ᵉʳ novembre 2026. La TVA de 20 % porte sur les cartes, le port et les droits. Au‑delà de 150 €, le droit normal s'applique (0 % par défaut ici, à vérifier selon le code douanier).</p>
+        <p class="note">Le port est calculé ainsi : grille 2026 du transporteur pour la France, moins la remise, plus la surcharge carburant (réglables pour chaque transporteur). Les mailbox ont souvent des tarifs négociés : compare avec un vrai devis et ajuste la remise. À l'arrivée, chaque transporteur facture ses frais de gestion : La Poste (colis USPS) quand des taxes sont dues, FedEx au minimum 12 € + 0,90 € de frais d'entrée UE, DHL 21 € + 2 % des taxes pour un destinataire sans compte. Côté UE : droit forfaitaire de 3 € par catégorie d'article jusqu'à 150 € depuis le 1ᵉʳ juillet 2026, et frais de traitement de 2 € par catégorie depuis le 1ᵉʳ novembre 2026. La TVA de 20 % porte sur les cartes, le port et les droits. Au‑delà de 150 €, le droit normal s'applique (0 % par défaut ici, à vérifier selon le code douanier).</p>
       </details>
     </section>
   </div>
@@ -265,21 +268,28 @@ const DEFAULTS = {
   buy:{nCards:5,nPkg:5,total:200,shipUS:25,tax:7,shipEbay:22},
   sub:{annual:110,taxFreeFee:80,months:2,recv:0,consol:0,handling:0},
   usage:{std:{perPkg:2,perCard:1,cap:5},tf:{perPkg:5,perCard:2,cap:10},consol:3},
-  ship:{gCard:12,gBase:100,discount:0,fixe:15,per100:3},
+  ship:{gCard:12,gBase:200,fixe:15,per100:3},
+  carrier:{fc:{disc:0,fuel:0},pmi:{disc:0,fuel:0},fedex:{disc:0,fuel:33},fedexip:{disc:0,fuel:33},dhl:{disc:75,fuel:30},custom:{disc:0,fuel:0}},
   cust:{fx:0.86,vat:20,flat:3,euFee:2,cats:1,adval:0},
   gestion:{post:{fix:2,pct:0},fedex:{fix:12.9,pct:0},dhl:{fix:21,pct:2},custom:{fix:2,pct:0}}
 };
-/* Barèmes : poids max en grammes → prix en $ ; extra = $ par tranche supplémentaire */
-const OZ=28.35, LB=453.6;
+/* Barèmes 2026 vers la France, en $ : [poids max en g, prix] ; extra = [tranche en g, $ par tranche] */
+const OZ=28.35, LB=453.6, L=a=>a.map((p,i)=>[(i+1)*LB,p]);
 const CARRIERS={
-  fc:{name:"USPS First‑Class Package Intl",g:"post",maxG:64*OZ,maxUsd:400,rows:[[8*OZ,21.95],[16*OZ,38.30],[32*OZ,42.75],[48*OZ,57.30],[64*OZ,72.60]]},
-  pmi:{name:"USPS Priority Mail Intl",g:"post",rows:[[LB,66.25],[2*LB,71.95],[3*LB,77.55],[4*LB,83.20]],extra:[LB,5.6]},
-  fedex:{name:"FedEx International Connect Plus",g:"fedex",maxUsd:1000,rows:[[LB,17.55],[2*LB,17.55],[3*LB,19.86],[4*LB,22.61],[5*LB,24.44]],extra:[LB,1.3]},
-  dhl:{name:"DHL Express Worldwide",g:"dhl",rows:[[500,35.70]],extra:[500,9]}
+  fc:{name:"USPS First‑Class Package Intl",g:"post",maxG:64*OZ,maxUsd:400,rows:[[8*OZ,21.95],[16*OZ,38.30],[32*OZ,42.75],[48*OZ,57.30],[64*OZ,72.60]],
+      src:"Tarif public USPS au 12 juillet 2026, sans surcharge carburant."},
+  pmi:{name:"USPS Priority Mail Intl",g:"post",rows:L([66.25,71.95,77.55,83.20]),extra:[LB,5.6],
+      src:"Tarif public USPS au 12 juillet 2026, sans surcharge carburant."},
+  fedex:{name:"FedEx International Connect Plus",g:"fedex",maxUsd:1000,rows:L([17.55,17.55,19.86,22.61,24.44,24.57,25.06,25.95,26.71,27.77]),extra:[LB,1.3],
+      src:"Grille FedEx 2026 zone France (hors carburant). Surcharge carburant internationale FedEx : 33 % début novembre 2026."},
+  fedexip:{name:"FedEx International Priority",g:"fedex",rows:L([47.83,47.83,47.83,47.83,48.35,51.38,54.36,56.47,56.96,57.10,57.56,58.17]),extra:[LB,0.8],
+      src:"Grille FedEx 2026 zone France (hors carburant). Surcharge carburant internationale FedEx : 33 % début novembre 2026."},
+  dhl:{name:"DHL Express Worldwide",g:"dhl",rows:L([148.69,174.47,201.54,230.58,262.54,272.72,287.94,302.94,309.30,314.38,329.99,345.60]),extra:[LB,15.6],
+      src:"Tarif public DHL 2026 (zone C, France). Les plateformes et mailbox obtiennent de grosses remises : 75 % par défaut, ce qui donne ≈ 37 $ pour 1 lb, cohérent avec les ≈ 36 $ observés. Carburant DHL : souvent 25 à 35 %."}
 };
 const gKey=()=>S.shipMode==="custom"?"custom":CARRIERS[S.shipMode].g;
 const GNAME={post:"La Poste (colis USPS)",fedex:"FedEx",dhl:"DHL Express",custom:"ton transporteur"};
-const KEY="mailbox-sim-v4";
+const KEY="mailbox-sim-v5";
 let S;
 try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 if(!S||!S.buy) S=structuredClone(DEFAULTS);
@@ -292,19 +302,19 @@ const set=(p,v)=>{const ks=p.split(".");ks.slice(0,-1).reduce((o,k)=>o[k],S)[ks.
 
 /* ---------- transport ---------- */
 function shipCost(weightG, goodsUsd){
-  const disc=1-n(S.ship.discount)/100;
-  if(S.shipMode==="custom") return {usd:(n(S.ship.fixe)+n(S.ship.per100)*Math.ceil(weightG/100))*disc,name:"Tarif perso",warn:""};
   let mode=S.shipMode, warn="";
+  if(mode==="fedex" && goodsUsd>CARRIERS.fedex.maxUsd){ warn="Valeur supérieure à 1 000 $, la limite de FedEx Connect Plus : calcul basculé en FedEx International Priority."; mode="fedexip"; }
+  const C=S.carrier[mode], k=(1-n(C.disc)/100)*(1+n(C.fuel)/100);
+  if(mode==="custom") return {usd:(n(S.ship.fixe)+n(S.ship.per100)*Math.ceil(weightG/100))*k,name:"Tarif perso",warn:""};
   if(mode==="fc" && (weightG>CARRIERS.fc.maxG || goodsUsd>CARRIERS.fc.maxUsd)){
     warn = weightG>CARRIERS.fc.maxG ? "Colis trop lourd pour First‑Class (1,8 kg max) : calcul basculé en Priority Mail."
                             : "Valeur supérieure à 400 $, la limite du First‑Class : calcul basculé en Priority Mail.";
     mode="pmi";
   }
-  if(mode==="fedex" && goodsUsd>CARRIERS.fedex.maxUsd) warn="Valeur supérieure à 1 000 $ : FedEx Connect Plus n'est plus accepté, prévois FedEx International Priority (plus cher).";
-  const T=CARRIERS[mode]; let p;
+  const T=CARRIERS[mode], C2=S.carrier[mode], k2=(1-n(C2.disc)/100)*(1+n(C2.fuel)/100); let p;
   const row=T.rows.find(r=>Math.ceil(weightG)<=r[0]+0.5);
   if(row) p=row[1]; else { const last=T.rows.at(-1); p=last[1]+T.extra[1]*Math.ceil((weightG-last[0])/T.extra[0]); }
-  return {usd:p*disc,name:T.name,warn};
+  return {usd:p*k2,base:p,name:T.name,mode,warn};
 }
 
 /* ---------- calculs ---------- */
@@ -353,6 +363,8 @@ function renderBox(){
   document.querySelectorAll("[data-box]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.box===S.box));
   document.querySelectorAll("[data-ship]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.ship===S.shipMode));
   document.getElementById("customShip").hidden=S.shipMode!=="custom";
+  const CC=S.carrier[S.shipMode], cd=document.getElementById("cDisc"), cf=document.getElementById("cFuel");
+  if(document.activeElement!==cd) cd.value=CC.disc; if(document.activeElement!==cf) cf.value=CC.fuel;
   const G=S.gestion[gKey()];
   document.getElementById("gTitle").textContent="Frais de gestion à l'arrivée · "+GNAME[gKey()];
   const gf=document.getElementById("gFix"), gp=document.getElementById("gPct");
@@ -388,6 +400,8 @@ function feeNote(){
 }
 document.querySelectorAll("[data-box]").forEach(b=>b.onclick=()=>{S.box=b.dataset.box;renderBox();update()});
 document.querySelectorAll("[data-ship]").forEach(b=>b.onclick=()=>{S.shipMode=b.dataset.ship;renderBox();update()});
+document.getElementById("cDisc").addEventListener("input",e=>{S.carrier[S.shipMode].disc=e.target.value;update()});
+document.getElementById("cFuel").addEventListener("input",e=>{S.carrier[S.shipMode].fuel=e.target.value;update()});
 document.getElementById("gFix").addEventListener("input",e=>{S.gestion[gKey()].fix=e.target.value;update()});
 document.getElementById("gPct").addEventListener("input",e=>{S.gestion[gKey()].pct=e.target.value;update()});
 document.getElementById("taxFree").onclick=()=>{S.taxFree=!S.taxFree;renderBox();update()};
@@ -411,6 +425,9 @@ function update(){
     <div><small>Droits + frais UE</small><b>${eur(M.parts.droits+M.parts.fraisUE)}</b></div>
     <div><small>TVA + gestion</small><b>${eur(M.parts.tva+M.parts.gestion)}</b></div>`;
   document.getElementById("shipWarn").textContent=M.ship.warn;
+  const sm=M.ship.mode, Cc=sm&&S.carrier[sm];
+  document.getElementById("cNote").innerHTML = S.shipMode==="custom" ? "Ton barème : base + prix par tranche de 100 g, puis remise et carburant appliqués."
+    : `<b>${M.ship.name}</b> : tarif ${usd(M.ship.base)}${n(Cc.disc)?` − ${n(Cc.disc)} %`:""}${n(Cc.fuel)?` + ${n(Cc.fuel)} % de carburant`:""} = <b>${usd(M.ship.usd)}</b> pour ${Math.round(M.weight)} g.<br>${CARRIERS[sm].src}`;
 
   const tb=document.getElementById("totBox"), te=document.getElementById("totEbay");
   tb.querySelector(".v").textContent=eur(M.total); te.querySelector(".v").textContent=eur(E.total);
