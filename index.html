@@ -363,10 +363,28 @@ function renderBox(){
   document.getElementById("taxFree").setAttribute("aria-pressed",!!S.taxFree);
   document.getElementById("tfSub").textContent = S.box==="sub" ? "Adresse exonérée de taxe, avec un supplément annuel" : "Entrepôt Oregon (sans taxe) au lieu de l'Arizona";
   document.getElementById("usageHead").textContent = S.taxFree ? "Tarifs Oregon · sans taxe US" : "Tarifs Arizona · taxe US appliquée";
-  const T=S.taxFree?S.usage.tf:S.usage.std;
-  document.getElementById("boxNote").textContent = S.box==="sub"
-    ? `Seuls les mois utilisés pour cet envoi sont comptés : ${usd((n(S.sub.annual)+(S.taxFree?n(S.sub.taxFreeFee):0))/12)} par mois × ${n(S.sub.months)} mois = ${usd((n(S.sub.annual)+(S.taxFree?n(S.sub.taxFreeFee):0))/12*n(S.sub.months))}.`
-    : `Par colis reçu : ${n(T.perPkg)} $ de traitement + ${n(T.perCard)} $ par carte, plafonné au prix du lot (${n(T.cap)} $). Les cartes sont réparties également entre les colis.`;
+}
+function feeNote(){
+  const {nC,nP}=norm(S.buy), fx=n(S.cust.fx);
+  const fmt=v=>usd(v).replace(/,00\s/," ");
+  let lines=[], tot=0;
+  if(S.box==="usage"){
+    const T=S.taxFree?S.usage.tf:S.usage.std, groups={};
+    split(nC,nP).forEach(q=>groups[q]=(groups[q]||0)+1);
+    Object.keys(groups).sort((a,b)=>a-b).forEach(q=>{
+      const each=n(T.perPkg)+Math.min(n(T.cap),n(T.perCard)*q), lot=n(T.perCard)*q>n(T.cap);
+      tot+=each*groups[q];
+      lines.push(`${groups[q]} colis de ${q} carte${q>1?"s":""} × ${fmt(each)} <small>(${fmt(n(T.perPkg))} + ${lot?"lot "+fmt(n(T.cap)):q+" × "+fmt(n(T.perCard))})</small>`);
+    });
+    tot+=n(S.usage.consol); lines.push(`Consolidation : ${fmt(n(S.usage.consol))}`);
+  } else {
+    const m=(n(S.sub.annual)+(S.taxFree?n(S.sub.taxFreeFee):0))/12, ab=m*n(S.sub.months);
+    tot=ab+n(S.sub.recv)*nP+n(S.sub.consol)+n(S.sub.handling);
+    lines.push(`Abonnement : ${usd(m)} par mois × ${n(S.sub.months)} mois = ${usd(ab)}`);
+    if(n(S.sub.recv)) lines.push(`Réception : ${nP} colis × ${fmt(n(S.sub.recv))}`);
+    if(n(S.sub.consol)+n(S.sub.handling)) lines.push(`Consolidation et manutention : ${fmt(n(S.sub.consol)+n(S.sub.handling))}`);
+  }
+  document.getElementById("boxNote").innerHTML=`<b>Frais de mailbox pour cet envoi</b><br>${lines.join("<br>")}<br><b>Total : ${usd(tot)} ≈ ${eur(tot*fx)}</b> <small>(converti au taux de ${String(n(S.cust.fx)).replace(".",",")} € pour 1 $, d'où les centimes)</small>`;
 }
 document.querySelectorAll("[data-box]").forEach(b=>b.onclick=()=>{S.box=b.dataset.box;renderBox();update()});
 document.querySelectorAll("[data-ship]").forEach(b=>b.onclick=()=>{S.shipMode=b.dataset.ship;renderBox();update()});
@@ -377,7 +395,7 @@ document.getElementById("reset").onclick=()=>{S=structuredClone(DEFAULTS);docume
 
 /* ---------- résultats ---------- */
 function update(){
-  save();
+  save(); feeNote();
   const M=calcMailbox(S.buy), E=calcEbay(S.buy);
   const diff=E.total-M.total;
   document.getElementById("taxCalc").textContent=`= ${usd(n(S.buy.total)*n(S.buy.tax)/100)}`;
