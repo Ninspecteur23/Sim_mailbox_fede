@@ -99,6 +99,23 @@
   .tot .v{font-family:"Bricolage Grotesque";font-weight:800;font-size:26px;margin-top:2px}
   .tot .pc{color:var(--muted);font-size:12px}
   .tot.best{border-color:var(--good);box-shadow:0 0 0 3px var(--good-soft)}
+  .bk{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;margin-bottom:10px}
+  .bk .lab{font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px}
+  .bk .lab i{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .bk .val{font-family:"Bricolage Grotesque";font-weight:700;font-size:15px;text-align:right}
+  .bk .track{grid-column:1/-1;height:7px;border-radius:99px;background:#f1ebdf;overflow:hidden}
+  .bk .track b{display:block;height:100%;border-radius:99px;transition:width .35s ease}
+  .totline{display:flex;justify-content:space-between;align-items:baseline;border-top:1.5px solid var(--ink);padding-top:10px;margin-top:4px;font-weight:700}
+  .totline b{font-family:"Bricolage Grotesque";font-size:22px}
+  .cmp{padding:16px 20px;background:#fbf8f2}
+  .cmp h2{font-size:16px}
+  .cmphead{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .cmp p{margin:4px 0;font-size:13px;color:var(--muted)}
+  .cmp p b{color:var(--ink)}
+  .cmp .diff{display:inline-block;font-weight:700;font-size:13px;border-radius:99px;padding:3px 10px;margin:4px 0}
+  .diff.good{background:var(--good-soft);color:var(--good)} .diff.bad{background:var(--ebay-soft);color:var(--ebay)}
+  .verdict .chipsv{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .verdict .chipsv span{background:rgba(255,255,255,.12);border-radius:99px;padding:4px 10px;font-size:12px;font-weight:600}
   .percard{background:var(--paper);border-radius:14px;padding:14px;margin-bottom:16px}
   .percard .t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px}
   .percard .row{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0}
@@ -128,8 +145,8 @@
 <div class="stripe"></div>
 <header>
   <div class="eyebrow">Achats de cartes aux États‑Unis ✈ France</div>
-  <h1>Mailbox US ou <em>envoi eBay direct</em>&nbsp;?</h1>
-  <p>Indique tes achats et ta mailbox. Le simulateur estime le colis groupé (port USPS, TVA, droits et frais à l'arrivée), le compare à des envois eBay séparés et te dit à partir de combien de cartes la mailbox devient rentable.</p>
+  <h1>Combien coûte une carte <em>via une mailbox US</em>&nbsp;?</h1>
+  <p>Indique tes achats et ta mailbox : le simulateur calcule ce que la mailbox ajoute au prix de chaque carte (frais, port, taxes et douane), et le compare à un achat eBay livré directement en France.</p>
 </header>
 
 <main>
@@ -238,24 +255,24 @@
   <div class="results grid" style="gap:20px">
     <div class="verdict" id="verdict"></div>
     <section class="panel">
-      <h2>Comparaison</h2>
-      <div class="duo">
-        <div class="tot" id="totBox"><div class="k"><span class="dot" style="background:var(--box)"></span>Via mailbox</div><div class="v"></div><div class="pc"></div></div>
-        <div class="tot" id="totEbay"><div class="k"><span class="dot" style="background:var(--ebay)"></span>eBay direct</div><div class="v"></div><div class="pc"></div></div>
-      </div>
-      <div class="percard" id="perCard"></div>
-      <div id="bars"></div>
-      <div class="legend" id="legend"></div>
+      <h2>Où part le coût d'une carte&nbsp;?</h2>
+      <p class="hint" style="margin:4px 0 12px">Montants par carte, en plus de son prix d'achat.</p>
+      <div id="breakdown"></div>
+      <div class="totline" id="totLine"></div>
       <details>
         <summary>Détail du calcul</summary>
         <table id="detail"></table>
       </details>
     </section>
-    <section class="panel">
-      <h2>À partir de combien de cartes&nbsp;?</h2>
-      <p class="hint" style="margin:4px 0 8px" id="beHint"></p>
-      <div class="chartwrap"><svg id="chart" viewBox="0 0 520 260" width="100%" role="img" aria-label="Coût total selon le nombre de cartes"></svg><div class="tip" id="tip"></div></div>
-      <div class="legend"><span><i style="background:var(--box)"></i>Mailbox (1 envoi groupé)</span><span><i style="background:var(--ebay)"></i>eBay direct (envois séparés)</span></div>
+    <section class="panel cmp">
+      <div class="cmphead"><span class="dot" style="background:var(--ebay)"></span><h2>Pour comparer : achat eBay livré en France</h2></div>
+      <div id="cmpText"></div>
+      <details>
+        <summary>À partir de combien de cartes la mailbox revient moins cher&nbsp;?</summary>
+        <p class="hint" style="margin:10px 0 8px" id="beHint"></p>
+        <div class="chartwrap"><svg id="chart" viewBox="0 0 520 260" width="100%" role="img" aria-label="Coût total selon le nombre de cartes"></svg><div class="tip" id="tip"></div></div>
+        <div class="legend"><span><i style="background:var(--box)"></i>Mailbox (1 envoi groupé)</span><span><i style="background:var(--ebay)"></i>eBay direct (envois séparés)</span></div>
+      </details>
     </section>
     <div style="text-align:right"><button class="btn ghost" id="reset">↺ Réinitialiser les valeurs</button></div>
   </div>
@@ -415,10 +432,6 @@ function update(){
   document.getElementById("taxCalc").textContent=`= ${usd(n(S.buy.total)*n(S.buy.tax)/100)}`;
   document.getElementById("chips").innerHTML=`<span><b>${(M.nC/M.nP).toLocaleString("fr-FR",{maximumFractionDigits:1})}</b> carte(s) par colis</span><span><b>${usd(n(S.buy.total)/M.nC)}</b> par carte</span><span><b>${usd(n(S.buy.shipUS)/M.nP)}</b> de port US par colis</span>`;
 
-  const v=document.getElementById("verdict");
-  if(diff>0){v.className="verdict win";v.innerHTML=`<div class="lbl">Verdict</div><div class="big">La mailbox te fait économiser ${eur(diff)}</div><div class="sub">soit ${Math.round(diff/E.total*100)} % de moins qu'en eBay direct pour ${M.nC} carte${M.nC>1?"s":""}.</div>`}
-  else {v.className="verdict lose";v.innerHTML=`<div class="lbl">Verdict</div><div class="big">eBay direct reste moins cher de ${eur(-diff)}</div><div class="sub">La mailbox n'est pas encore rentable avec ${M.nC} carte${M.nC>1?"s":""}.</div>`}
-
   document.getElementById("estim").innerHTML=`
     <div><small>Poids du colis</small><b>${Math.round(M.weight)} g</b></div>
     <div><small>Port vers la France</small><b>${eur(M.parts.portIntl)}</b></div>
@@ -429,25 +442,24 @@ function update(){
   document.getElementById("cNote").innerHTML = S.shipMode==="custom" ? "Ton barème : base + prix par tranche de 100 g, puis remise et carburant appliqués."
     : `<b>${M.ship.name}</b> : tarif ${usd(M.ship.base)}${n(Cc.disc)?` − ${n(Cc.disc)} %`:""}${n(Cc.fuel)?` + ${n(Cc.fuel)} % de carburant`:""} = <b>${usd(M.ship.usd)}</b> pour ${Math.round(M.weight)} g.<br>${CARRIERS[sm].src}`;
 
-  const tb=document.getElementById("totBox"), te=document.getElementById("totEbay");
-  tb.querySelector(".v").textContent=eur(M.total); te.querySelector(".v").textContent=eur(E.total);
-  tb.querySelector(".pc").textContent=`${eur(M.total/M.nC)} / carte · 1 envoi`;
-  te.querySelector(".pc").textContent=`${eur(E.total/E.nC)} / carte · ${E.nP} colis`;
-  tb.classList.toggle("best",diff>0); te.classList.toggle("best",diff<=0);
+  const addM=(M.total-M.parts.cartes)/M.nC, addE=(E.total-E.parts.cartes)/E.nC, avgP=M.parts.cartes/M.nC;
+  const v=document.getElementById("verdict"); v.className="verdict";
+  v.innerHTML=`<div class="lbl">Coût d'utilisation de la mailbox</div>
+    <div class="big">+ ${eur(addM)} par carte</div>
+    <div class="sub">soit +${Math.round(addM/avgP*100)} % sur le prix moyen d'une carte (${eur(avgP)}), port, taxes et douane compris.</div>
+    <div class="chipsv"><span>${M.nC} carte${M.nC>1?"s":""} · ${M.nP} colis · 1 envoi</span><span>Total payé : ${eur(M.total)}</span><span>${eur(M.total/M.nC)} par carte tout compris</span></div>`;
 
-  const addM=(M.total-M.parts.cartes)/M.nC, addE=(E.total-E.parts.cartes)/E.nC;
-  document.getElementById("perCard").innerHTML=`<div class="t">Coût ajouté par carte (en plus de son prix)</div>
-    <div class="row"><span><span class="dot" style="background:var(--box)"></span> Via mailbox</span><b>${eur(addM)}</b></div>
-    <div class="row sub"><span>dont frais de mailbox seuls</span><b>${eur(M.parts.mailbox/M.nC)}</b></div>
-    <div class="row sub"><span>dont port, taxes et frais d'import</span><b>${eur((M.total-M.parts.cartes-M.parts.mailbox)/M.nC)}</b></div>
-    <div class="row"><span><span class="dot" style="background:var(--ebay)"></span> eBay direct</span><b>${eur(addE)}</b></div>`;
-  const max=Math.max(M.total,E.total,1);
-  const bar=R=>Object.keys(LABELS).map(k=>R.parts[k]>0.004?`<i title="${LABELS[k][0]} : ${eur(R.parts[k])}" style="width:${R.parts[k]/max*100}%;background:${LABELS[k][1]}"></i>`:"").join("");
-  document.getElementById("bars").innerHTML=`
-    <div class="barrow"><div class="h"><span>Mailbox</span><span>${eur(M.total)}</span></div><div class="bar">${bar(M)}</div></div>
-    <div class="barrow"><div class="h"><span>eBay direct</span><span>${eur(E.total)}</span></div><div class="bar">${bar(E)}</div></div>`;
-  const used=Object.keys(LABELS).filter(k=>M.parts[k]>0.004||E.parts[k]>0.004);
-  document.getElementById("legend").innerHTML=used.map(k=>`<span><i style="background:${LABELS[k][1]}"></i>${LABELS[k][0]}</span>`).join("");
+  const keys=Object.keys(LABELS).filter(k=>k!=="cartes"&&M.parts[k]>0.004).sort((a,b)=>M.parts[b]-M.parts[a]);
+  const top=Math.max(...keys.map(k=>M.parts[k]),0.01);
+  document.getElementById("breakdown").innerHTML=keys.map(k=>`<div class="bk"><span class="lab"><i style="background:${LABELS[k][1]}"></i>${LABELS[k][0]}</span><span class="val">${eur(M.parts[k]/M.nC)}</span><div class="track"><b style="width:${M.parts[k]/top*100}%;background:${LABELS[k][1]}"></b></div></div>`).join("");
+  document.getElementById("totLine").innerHTML=`<span>Coût ajouté par carte</span><b>${eur(addM)}</b>`;
+
+  const eTax=(E.parts.tva+E.parts.droits+E.parts.fraisUE)/E.nC;
+  const d=addE-addM;
+  document.getElementById("cmpText").innerHTML=`
+    <p>Chez eBay, avec une livraison directe vers la France, chaque carte coûterait en plus de son prix <b>${eur(addE)}</b> : port ${eur(E.parts.portIntl/E.nC)}, plus ${eur(eTax)} de TVA, droit forfaitaire de 3 € et frais UE de 2 € par colis, payés à eBay au moment de l'achat${E.parts.gestion>0?", plus les frais de gestion à la livraison pour les colis de plus de 150 €":""}.</p>
+    <span class="diff ${d>0?"good":"bad"}">${d>0?`Mailbox moins chère de ${eur(d)} par carte`:`eBay direct moins cher de ${eur(-d)} par carte`}</span>
+    <p>À nuancer : beaucoup d'annonces américaines ne proposent pas la livraison vers la France. Pour celles-là, la mailbox est la seule option.</p>`;
   document.getElementById("detail").innerHTML=`<tr><th></th><th>Mailbox</th><th>eBay</th></tr>`+
     Object.keys(LABELS).map(k=>`<tr><td>${LABELS[k][0]}</td><td>${eur(M.parts[k])}</td><td>${eur(E.parts[k])}</td></tr>`).join("")+
     `<tr class="sum"><td>Total</td><td>${eur(M.total)}</td><td>${eur(E.total)}</td></tr>`+
