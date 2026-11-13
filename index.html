@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulateur Mailbox US</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f6f1e7; --card:#fffdf8; --ink:#1c2633; --muted:#6b7280; --line:#e7dfcf;
+    --box:#e4572e; --box-soft:#fde4dc; --ebay:#3657d6; --ebay-soft:#e1e7fb;
+    --good:#13795b; --good-soft:#d8f1e7; --warn:#a15c07; --warn-soft:#fdf0d5; --radius:18px;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.45 "DM Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .stripe{height:10px;background:repeating-linear-gradient(135deg,var(--box) 0 18px,var(--paper) 18px 30px,var(--ebay) 30px 48px,var(--paper) 48px 60px)}
+  header{max-width:1180px;margin:0 auto;padding:28px 20px 8px}
+  .eyebrow{font-weight:700;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--box)}
+  h1{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:clamp(30px,5vw,48px);line-height:1.02;margin:6px 0 8px;letter-spacing:-.02em}
+  h1 em{font-style:normal;color:var(--box)}
+  header p{margin:0;color:var(--muted);max-width:640px}
+  main{max-width:1180px;margin:0 auto;padding:16px 20px 60px;display:grid;gap:20px;grid-template-columns:1fr}
+  @media(min-width:980px){main{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);align-items:start}.results{position:sticky;top:16px}}
+  section.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:0 1px 0 rgba(0,0,0,.02),0 10px 30px -22px rgba(28,38,51,.35)}
+  .step{display:flex;align-items:center;gap:10px;margin:0 0 14px}
+  .step b{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--ink);color:#fff;font-family:"Bricolage Grotesque";font-size:14px}
+  h2{font-family:"Bricolage Grotesque",sans-serif;font-size:20px;margin:0;letter-spacing:-.01em}
+  h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:18px 0 10px}
+  .hint{color:var(--muted);font-size:13px;margin:-6px 0 14px}
+  label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
+  input,select{width:100%;font:inherit;font-weight:600;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:11px;padding:9px 11px;outline:none;transition:border-color .15s,box-shadow .15s}
+  select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 17px) 55%,calc(100% - 12px) 55%;background-size:5px 5px;background-repeat:no-repeat;padding-right:30px}
+  input:focus,select:focus{border-color:var(--ink);box-shadow:0 0 0 3px rgba(28,38,51,.08)}
+  .unit{position:relative}
+  .unit input{padding-right:30px}
+  .unit span{position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;font-weight:600;pointer-events:none}
+  .big input{font-family:"Bricolage Grotesque";font-size:20px;font-weight:700;padding:11px 12px}
+  .grid{display:grid;gap:12px}
+  .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:560px){.g3{grid-template-columns:repeat(2,1fr)}}
+  .tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:4px;vertical-align:1px}
+  .tag.b{background:var(--box-soft);color:var(--box)} .tag.e{background:var(--ebay-soft);color:var(--ebay)}
+  .calc{display:flex;align-items:center;height:42px;padding:0 12px;border-radius:11px;background:var(--paper);font-weight:700}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+  .chips span{background:var(--paper);border-radius:99px;padding:5px 11px;font-size:12px;font-weight:600;color:var(--muted)}
+  .chips b{color:var(--ink)}
+  .btn{font:inherit;font-weight:700;border:0;border-radius:12px;padding:11px 16px;cursor:pointer}
+  .btn.ghost{background:transparent;color:var(--muted);padding:6px 10px;font-size:13px}
+  .btn.ghost:hover{color:var(--ink)}
+
+  .choice{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .opt{border:2px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;background:#fff;text-align:left;font:inherit;color:inherit;transition:border-color .15s,background .15s}
+  .opt strong{display:block;font-family:"Bricolage Grotesque";font-size:16px}
+  .opt small{color:var(--muted)}
+  .opt[aria-pressed="true"]{border-color:var(--box);background:var(--box-soft)}
+  .opt .ico{font-size:22px;display:block;margin-bottom:4px}
+  .ship .opt[aria-pressed="true"]{border-color:var(--ink);background:#f1ece2}
+  .ship{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+  .ship .opt{padding:12px}
+  .ship .opt strong{font-size:14px}
+  .toggle{display:flex;gap:12px;align-items:center;width:100%;text-align:left;font:inherit;color:inherit;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:14px;cursor:pointer}
+  .toggle strong{display:block} .toggle small{color:var(--muted)}
+  .sw{flex:none;width:44px;height:26px;border-radius:99px;background:#d9d0bf;position:relative;transition:background .2s}
+  .sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .2s}
+  .toggle[aria-pressed="true"]{border-color:var(--good);background:var(--good-soft)}
+  .toggle[aria-pressed="true"] .sw{background:var(--good)}
+  .toggle[aria-pressed="true"] .sw i{left:21px}
+  body:not(.tf) .tfOnly,body:not(.tf) .setTf,body.tf .setStd{display:none}
+  body.tf .taxf{opacity:.4} body.tf .taxf .calc{text-decoration:line-through}
+  .sethead{font-weight:700;font-size:13px;margin-bottom:10px}
+  details{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
+  summary{cursor:pointer;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"＋";color:var(--muted)} details[open] summary::after{content:"－"}
+  details .grid{margin-top:12px}
+  .estim{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0 4px}
+  @media(max-width:560px){.estim{grid-template-columns:repeat(2,1fr)}}
+  .estim div{background:var(--paper);border-radius:12px;padding:10px 12px}
+  .estim small{display:block;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+  .estim b{font-family:"Bricolage Grotesque";font-size:18px}
+  .warn{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600;margin-top:10px}
+  .warn:empty{display:none}
+
+  .verdict{border-radius:var(--radius);padding:20px;color:#fff;background:var(--ink);position:relative;overflow:hidden}
+  .verdict::after{content:"";position:absolute;right:-30px;top:-30px;width:140px;height:140px;border-radius:50%;border:14px dashed rgba(255,255,255,.12)}
+  .verdict .lbl{font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.75;font-weight:700}
+  .verdict .big{font-family:"Bricolage Grotesque";font-weight:800;font-size:clamp(26px,4vw,36px);line-height:1.05;margin:6px 0}
+  .verdict .sub{opacity:.85}
+  .verdict.win{background:linear-gradient(135deg,#0f6b51,#13795b)}
+  .verdict.lose{background:linear-gradient(135deg,#2a3f9e,#3657d6)}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+  .tot{border-radius:14px;padding:14px;border:1.5px solid var(--line);background:#fff}
+  .tot .k{font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .tot .v{font-family:"Bricolage Grotesque";font-weight:800;font-size:26px;margin-top:2px}
+  .tot .pc{color:var(--muted);font-size:12px}
+  .tot.best{border-color:var(--good);box-shadow:0 0 0 3px var(--good-soft)}
+  .percard{background:var(--paper);border-radius:14px;padding:14px;margin-bottom:16px}
+  .percard .t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px}
+  .percard .row{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0}
+  .percard .row b{font-family:"Bricolage Grotesque";font-size:18px}
+  .percard .row.sub{font-size:13px;color:var(--muted)} .percard .row.sub b{font-size:14px;color:var(--ink)}
+  .barrow{margin-bottom:12px}
+  .barrow .h{display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:5px}
+  .bar{display:flex;height:16px;border-radius:99px;overflow:hidden;background:#f1ebdf}
+  .bar i{display:block;height:100%;transition:width .35s ease}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+  th,td{padding:7px 4px;border-bottom:1px solid var(--line);text-align:right}
+  th:first-child,td:first-child{text-align:left;color:var(--muted);font-weight:500}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  tr.sum td{font-weight:800;color:var(--ink);border-bottom:0;font-size:14px}
+  .chartwrap{position:relative}
+  svg text{font-family:"DM Sans";fill:var(--muted);font-size:11px}
+  .tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;border-radius:10px;padding:8px 10px;font-size:12px;white-space:nowrap;transform:translate(-50%,-110%);opacity:0;transition:opacity .1s}
+  .note{font-size:12px;color:var(--muted);margin-top:10px}
+  .pill{display:inline-block;background:var(--good-soft);color:var(--good);font-weight:800;border-radius:99px;padding:3px 10px;font-size:13px}
+  footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<div class="stripe"></div>
+<header>
+  <div class="eyebrow">Achats de cartes aux États‑Unis ✈ France</div>
+  <h1>Mailbox US ou <em>envoi eBay direct</em>&nbsp;?</h1>
+  <p>Indique tes achats et ta mailbox. Le simulateur estime le colis groupé (port USPS, TVA, droits et frais à l'arrivée), le compare à des envois eBay séparés et te dit à partir de combien de cartes la mailbox devient rentable.</p>
+</header>
+
+<main>
+  <div class="grid" style="gap:20px">
+    <!-- STEP 1 -->
+    <section class="panel">
+      <div class="step"><b>1</b><h2>Mes achats</h2></div>
+      <p class="hint">Saisis tes achats en gros. Montants en dollars.</p>
+      <div class="grid g2">
+        <div class="big"><label>Nombre de cartes</label><div class="unit"><input data-k="buy.nCards"><span>🃏</span></div></div>
+        <div class="big"><label>Nombre de colis (vendeurs)</label><div class="unit"><input data-k="buy.nPkg"><span>📦</span></div></div>
+        <div class="big"><label>Montant total des cartes</label><div class="unit"><input data-k="buy.total"><span>$</span></div></div>
+        <div class="big"><label>Port US total <span class="tag b">mailbox</span></label><div class="unit"><input data-k="buy.shipUS"><span>$</span></div></div>
+      </div>
+      <div class="grid g2" style="margin-top:12px">
+        <div class="taxf"><label>Taxe US (sales tax) <span class="tag b">mailbox</span></label>
+          <div class="grid" style="grid-template-columns:90px 1fr;gap:8px"><div class="unit"><input data-k="buy.tax"><span>%</span></div><div class="calc" id="taxCalc"></div></div></div>
+        <div><label>Port eBay vers la France, par colis <span class="tag e">eBay</span></label><div class="unit"><input data-k="buy.shipEbay"><span>$</span></div></div>
+      </div>
+      <div class="chips" id="chips"></div>
+    </section>
+
+    <!-- STEP 2 -->
+    <section class="panel">
+      <div class="step"><b>2</b><h2>Ma mailbox</h2></div>
+      <div class="choice">
+        <button class="opt" data-box="sub" aria-pressed="true"><span class="ico">📅</span><strong>Abonnement</strong><small>Type Gisis : forfait annuel</small></button>
+        <button class="opt" data-box="usage" aria-pressed="false"><span class="ico">📦</span><strong>À l'usage</strong><small>Type SMC : prix par colis et par carte</small></button>
+      </div>
+      <button class="toggle" id="taxFree" aria-pressed="false">
+        <span class="sw"><i></i></span>
+        <span><strong>Option sans taxe US</strong><small id="tfSub"></small></span>
+      </button>
+      <div id="boxSub" class="grid g2">
+        <div><label>Abonnement annuel</label><div class="unit"><input data-k="sub.annual"><span>$</span></div></div>
+        <div class="tfOnly"><label>Option sans taxe, par an</label><div class="unit"><input data-k="sub.taxFreeFee"><span>$</span></div></div>
+        <div><label>Mois d'utilisation avant l'envoi</label><div class="unit"><input data-k="sub.months"><span>mois</span></div></div>
+        <div><label>Réception, par colis</label><div class="unit"><input data-k="sub.recv"><span>$</span></div></div>
+        <div><label>Consolidation, par envoi</label><div class="unit"><input data-k="sub.consol"><span>$</span></div></div>
+        <div><label>Manutention, par envoi</label><div class="unit"><input data-k="sub.handling"><span>$</span></div></div>
+      </div>
+      <div id="boxUsage" hidden>
+        <div class="sethead" id="usageHead"></div>
+        <div class="grid g3 setStd">
+          <div><label>Traitement par colis</label><div class="unit"><input data-k="usage.std.perPkg"><span>$</span></div></div>
+          <div><label>Par carte (1 à 5)</label><div class="unit"><input data-k="usage.std.perCard"><span>$</span></div></div>
+          <div><label>Lot de cartes (plafond)</label><div class="unit"><input data-k="usage.std.cap"><span>$</span></div></div>
+        </div>
+        <div class="grid g3 setTf">
+          <div><label>Traitement par colis</label><div class="unit"><input data-k="usage.tf.perPkg"><span>$</span></div></div>
+          <div><label>Par carte (1 à 5)</label><div class="unit"><input data-k="usage.tf.perCard"><span>$</span></div></div>
+          <div><label>Lot de cartes (plafond)</label><div class="unit"><input data-k="usage.tf.cap"><span>$</span></div></div>
+        </div>
+        <div class="grid g3" style="margin-top:12px">
+          <div><label>Consolidation, par envoi</label><div class="unit"><input data-k="usage.consol"><span>$</span></div></div>
+        </div>
+      </div>
+      <p class="note" id="boxNote"></p>
+    </section>
+
+    <!-- STEP 3 -->
+    <section class="panel">
+      <div class="step"><b>3</b><h2>Envoi vers la France</h2></div>
+      <div class="choice ship" id="shipChoice">
+        <button class="opt" data-ship="fc"><strong>USPS First‑Class</strong><small>Éco · 1 à 3 sem. · ≤ 1,8 kg et 400 $</small></button>
+        <button class="opt" data-ship="pmi"><strong>USPS Priority</strong><small>6 à 10 jours</small></button>
+        <button class="opt" data-ship="fedex"><strong>FedEx Connect Plus</strong><small>2 à 7 jours · ≤ 1 000 $</small></button>
+        <button class="opt" data-ship="dhl"><strong>DHL Express</strong><small>1 à 3 jours</small></button>
+        <button class="opt" data-ship="custom"><strong>Tarif perso</strong><small>Ton propre barème</small></button>
+      </div>
+      <div class="grid g3">
+        <div><label>Poids par carte</label><div class="unit"><input data-k="ship.gCard"><span>g</span></div></div>
+        <div><label>Emballage</label><div class="unit"><input data-k="ship.gBase"><span>g</span></div></div>
+        <div><label>Remise mailbox sur le port</label><div class="unit"><input data-k="ship.discount"><span>%</span></div></div>
+      </div>
+      <div class="grid g2" id="customShip" style="margin-top:12px">
+        <div><label>Base du colis</label><div class="unit"><input data-k="ship.fixe"><span>$</span></div></div>
+        <div><label>Par tranche de 100 g</label><div class="unit"><input data-k="ship.per100"><span>$</span></div></div>
+      </div>
+      <div class="estim" id="estim"></div>
+      <div class="warn" id="shipWarn"></div>
+      <details>
+        <summary>Taxes &amp; frais à l'arrivée en France</summary>
+        <div class="grid g2">
+          <div><label>Taux 1 $ =</label><div class="unit"><input data-k="cust.fx"><span>€</span></div></div>
+          <div><label>TVA import</label><div class="unit"><input data-k="cust.vat"><span>%</span></div></div>
+          <div><label>Droit forfaitaire UE (colis ≤ 150 €)</label><div class="unit"><input data-k="cust.flat"><span>€</span></div></div>
+          <div><label>Frais de traitement UE</label><div class="unit"><input data-k="cust.euFee"><span>€</span></div></div>
+          <div><label>Catégories d'articles par colis</label><div class="unit"><input data-k="cust.cats"><span>×</span></div></div>
+          <div><label>Droit si colis &gt; 150 €</label><div class="unit"><input data-k="cust.adval"><span>%</span></div></div>
+        </div>
+        <h3 id="gTitle"></h3>
+        <div class="grid g2">
+          <div><label>Frais de gestion, fixe</label><div class="unit"><input id="gFix" inputmode="decimal"><span>€</span></div></div>
+          <div><label>+ % des taxes avancées</label><div class="unit"><input id="gPct" inputmode="decimal"><span>%</span></div></div>
+        </div>
+        <p class="note">Tarifs de transport : USPS = tarifs publics au 12 juillet 2026 (Europe de l'Ouest) ; FedEx International Connect Plus = grille 2026 zone France, hors surcharge carburant ; DHL Express = estimation à partir d'un tarif de plateforme d'envoi (≈ 36 $ pour 0,5 kg), à vérifier. Les mailbox ont souvent des tarifs négociés : ajuste la remise. À l'arrivée, chaque transporteur facture ses frais de gestion : La Poste (colis USPS) quand des taxes sont dues, FedEx au minimum 12 € + 0,90 € de frais d'entrée UE, DHL 21 € + 2 % des taxes pour un destinataire sans compte. Côté UE : droit forfaitaire de 3 € par catégorie d'article jusqu'à 150 € depuis le 1ᵉʳ juillet 2026, et frais de traitement de 2 € par catégorie depuis le 1ᵉʳ novembre 2026. La TVA de 20 % porte sur les cartes, le port et les droits. Au‑delà de 150 €, le droit normal s'applique (0 % par défaut ici, à vérifier selon le code douanier).</p>
+      </details>
+    </section>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results grid" style="gap:20px">
+    <div class="verdict" id="verdict"></div>
+    <section class="panel">
+      <h2>Comparaison</h2>
+      <div class="duo">
+        <div class="tot" id="totBox"><div class="k"><span class="dot" style="background:var(--box)"></span>Via mailbox</div><div class="v"></div><div class="pc"></div></div>
+        <div class="tot" id="totEbay"><div class="k"><span class="dot" style="background:var(--ebay)"></span>eBay direct</div><div class="v"></div><div class="pc"></div></div>
+      </div>
+      <div class="percard" id="perCard"></div>
+      <div id="bars"></div>
+      <div class="legend" id="legend"></div>
+      <details>
+        <summary>Détail du calcul</summary>
+        <table id="detail"></table>
+      </details>
+    </section>
+    <section class="panel">
+      <h2>À partir de combien de cartes&nbsp;?</h2>
+      <p class="hint" style="margin:4px 0 8px" id="beHint"></p>
+      <div class="chartwrap"><svg id="chart" viewBox="0 0 520 260" width="100%" role="img" aria-label="Coût total selon le nombre de cartes"></svg><div class="tip" id="tip"></div></div>
+      <div class="legend"><span><i style="background:var(--box)"></i>Mailbox (1 envoi groupé)</span><span><i style="background:var(--ebay)"></i>eBay direct (envois séparés)</span></div>
+    </section>
+    <div style="text-align:right"><button class="btn ghost" id="reset">↺ Réinitialiser les valeurs</button></div>
+  </div>
+</main>
+<footer>Estimation indicative : vérifie les tarifs de ta mailbox, du transport et le taux de change. Tes saisies restent dans ton navigateur.</footer>
+
+<script>
+const DEFAULTS = {
+  box:"sub", taxFree:false, shipMode:"fc",
+  buy:{nCards:5,nPkg:5,total:200,shipUS:25,tax:7,shipEbay:22},
+  sub:{annual:110,taxFreeFee:80,months:2,recv:0,consol:0,handling:0},
+  usage:{std:{perPkg:2,perCard:1,cap:5},tf:{perPkg:5,perCard:2,cap:10},consol:3},
+  ship:{gCard:12,gBase:100,discount:0,fixe:15,per100:3},
+  cust:{fx:0.86,vat:20,flat:3,euFee:2,cats:1,adval:0},
+  gestion:{post:{fix:2,pct:0},fedex:{fix:12.9,pct:0},dhl:{fix:21,pct:2},custom:{fix:2,pct:0}}
+};
+/* Barèmes : poids max en grammes → prix en $ ; extra = $ par tranche supplémentaire */
+const OZ=28.35, LB=453.6;
+const CARRIERS={
+  fc:{name:"USPS First‑Class Package Intl",g:"post",maxG:64*OZ,maxUsd:400,rows:[[8*OZ,21.95],[16*OZ,38.30],[32*OZ,42.75],[48*OZ,57.30],[64*OZ,72.60]]},
+  pmi:{name:"USPS Priority Mail Intl",g:"post",rows:[[LB,66.25],[2*LB,71.95],[3*LB,77.55],[4*LB,83.20]],extra:[LB,5.6]},
+  fedex:{name:"FedEx International Connect Plus",g:"fedex",maxUsd:1000,rows:[[LB,17.55],[2*LB,17.55],[3*LB,19.86],[4*LB,22.61],[5*LB,24.44]],extra:[LB,1.3]},
+  dhl:{name:"DHL Express Worldwide",g:"dhl",rows:[[500,35.70]],extra:[500,9]}
+};
+const gKey=()=>S.shipMode==="custom"?"custom":CARRIERS[S.shipMode].g;
+const GNAME={post:"La Poste (colis USPS)",fedex:"FedEx",dhl:"DHL Express",custom:"ton transporteur"};
+const KEY="mailbox-sim-v4";
+let S;
+try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!S||!S.buy) S=structuredClone(DEFAULTS);
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const n=v=>{const x=parseFloat(String(v).replace(",","."));return isFinite(x)?x:0};
+const eur=v=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:v>=1000?0:2}).format(v);
+const usd=v=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(v);
+const get=p=>p.split(".").reduce((o,k)=>o[k],S);
+const set=(p,v)=>{const ks=p.split(".");ks.slice(0,-1).reduce((o,k)=>o[k],S)[ks.at(-1)]=v};
+
+/* ---------- transport ---------- */
+function shipCost(weightG, goodsUsd){
+  const disc=1-n(S.ship.discount)/100;
+  if(S.shipMode==="custom") return {usd:(n(S.ship.fixe)+n(S.ship.per100)*Math.ceil(weightG/100))*disc,name:"Tarif perso",warn:""};
+  let mode=S.shipMode, warn="";
+  if(mode==="fc" && (weightG>CARRIERS.fc.maxG || goodsUsd>CARRIERS.fc.maxUsd)){
+    warn = weightG>CARRIERS.fc.maxG ? "Colis trop lourd pour First‑Class (1,8 kg max) : calcul basculé en Priority Mail."
+                            : "Valeur supérieure à 400 $, la limite du First‑Class : calcul basculé en Priority Mail.";
+    mode="pmi";
+  }
+  if(mode==="fedex" && goodsUsd>CARRIERS.fedex.maxUsd) warn="Valeur supérieure à 1 000 $ : FedEx Connect Plus n'est plus accepté, prévois FedEx International Priority (plus cher).";
+  const T=CARRIERS[mode]; let p;
+  const row=T.rows.find(r=>Math.ceil(weightG)<=r[0]+0.5);
+  if(row) p=row[1]; else { const last=T.rows.at(-1); p=last[1]+T.extra[1]*Math.ceil((weightG-last[0])/T.extra[0]); }
+  return {usd:p*disc,name:T.name,warn};
+}
+
+/* ---------- calculs ---------- */
+function customs(goodsE, shipE, C){
+  const cats=Math.max(1,n(C.cats));
+  const duty = goodsE<=150 ? n(C.flat)*cats : n(C.adval)/100*(goodsE+shipE);
+  const vat = n(C.vat)/100*(goodsE+shipE+duty);
+  return {duty,vat,euFee:n(C.euFee)*cats};
+}
+function split(nC,nP){const b=Math.floor(nC/nP),r=nC%nP;return Array.from({length:nP},(_,i)=>b+(i<r?1:0))}
+function norm(P){const nC=Math.max(1,Math.round(n(P.nCards))),nP=Math.min(nC,Math.max(1,Math.round(n(P.nPkg))));return {nC,nP,total:n(P.total),shipUS:n(P.shipUS),tax:n(P.tax),shipEbay:n(P.shipEbay)}}
+function calcMailbox(P){
+  const {nC,nP,total,shipUS,tax}=norm(P), fx=n(S.cust.fx);
+  const ustax=S.taxFree?0:total*tax/100;
+  let fees=0;
+  if(S.box==="usage"){
+    const T=S.taxFree?S.usage.tf:S.usage.std;
+    split(nC,nP).forEach(q=>fees+=n(T.perPkg)+Math.min(n(T.cap),n(T.perCard)*q));
+    fees+=n(S.usage.consol);
+  } else {
+    fees=(n(S.sub.annual)+(S.taxFree?n(S.sub.taxFreeFee):0))/12*Math.max(0,n(S.sub.months))+n(S.sub.recv)*nP+n(S.sub.consol)+n(S.sub.handling);
+  }
+  const weight=n(S.ship.gBase)+nC*n(S.ship.gCard);
+  const sh=shipCost(weight,total);
+  const goodsE=total*fx, intlE=sh.usd*fx;
+  const c=customs(goodsE,intlE,S.cust);
+  const G=S.gestion[gKey()], gest=n(G.fix)+n(G.pct)/100*(c.duty+c.vat+c.euFee);
+  const parts={cartes:goodsE,taxeUS:ustax*fx,portUS:shipUS*fx,mailbox:fees*fx,portIntl:intlE,droits:c.duty,tva:c.vat,fraisUE:c.euFee,gestion:gest};
+  return {parts,total:sum(parts),nC,nP,weight,ship:sh,goodsE};
+}
+function calcEbay(P){
+  const {nC,nP,total,shipEbay}=norm(P), fx=n(S.cust.fx);
+  const g=total/nP*fx, s=shipEbay*fx, c=customs(g,s,S.cust);
+  const parts={cartes:total*fx,taxeUS:0,portUS:0,mailbox:0,portIntl:s*nP,droits:c.duty*nP,tva:c.vat*nP,fraisUE:c.euFee*nP,gestion:g>150?n(S.gestion.post.fix)*nP:0};
+  return {parts,total:sum(parts),nC,nP};
+}
+const sum=o=>Object.values(o).reduce((a,b)=>a+b,0);
+const LABELS={cartes:["Cartes","#1c2633"],taxeUS:["Taxe US","#8b5e34"],portUS:["Port vers mailbox","#c99a52"],mailbox:["Frais mailbox","#e4572e"],portIntl:["Port vers la France","#7c8db5"],droits:["Droits de douane","#a855a8"],tva:["TVA import","#3fa07a"],fraisUE:["Frais de traitement UE","#c2709f"],gestion:["Frais de gestion transporteur","#9aa3ad"]};
+
+/* ---------- liaisons ---------- */
+document.querySelectorAll("input[data-k]").forEach(inp=>{
+  inp.setAttribute("inputmode","decimal"); inp.value=get(inp.dataset.k);
+  inp.addEventListener("input",()=>{set(inp.dataset.k,inp.value);renderBox();update()});
+});
+function renderBox(){
+  document.querySelectorAll("[data-box]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.box===S.box));
+  document.querySelectorAll("[data-ship]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.ship===S.shipMode));
+  document.getElementById("customShip").hidden=S.shipMode!=="custom";
+  const G=S.gestion[gKey()];
+  document.getElementById("gTitle").textContent="Frais de gestion à l'arrivée · "+GNAME[gKey()];
+  const gf=document.getElementById("gFix"), gp=document.getElementById("gPct");
+  if(document.activeElement!==gf) gf.value=G.fix; if(document.activeElement!==gp) gp.value=G.pct;
+  document.getElementById("boxSub").hidden=S.box!=="sub";
+  document.getElementById("boxUsage").hidden=S.box!=="usage";
+  document.body.classList.toggle("tf",!!S.taxFree);
+  document.getElementById("taxFree").setAttribute("aria-pressed",!!S.taxFree);
+  document.getElementById("tfSub").textContent = S.box==="sub" ? "Adresse exonérée de taxe, avec un supplément annuel" : "Entrepôt Oregon (sans taxe) au lieu de l'Arizona";
+  document.getElementById("usageHead").textContent = S.taxFree ? "Tarifs Oregon · sans taxe US" : "Tarifs Arizona · taxe US appliquée";
+  const T=S.taxFree?S.usage.tf:S.usage.std;
+  document.getElementById("boxNote").textContent = S.box==="sub"
+    ? `Seuls les mois utilisés pour cet envoi sont comptés : ${usd((n(S.sub.annual)+(S.taxFree?n(S.sub.taxFreeFee):0))/12)} par mois × ${n(S.sub.months)} mois = ${usd((n(S.sub.annual)+(S.taxFree?n(S.sub.taxFreeFee):0))/12*n(S.sub.months))}.`
+    : `Par colis reçu : ${n(T.perPkg)} $ de traitement + ${n(T.perCard)} $ par carte, plafonné au prix du lot (${n(T.cap)} $). Les cartes sont réparties également entre les colis.`;
+}
+document.querySelectorAll("[data-box]").forEach(b=>b.onclick=()=>{S.box=b.dataset.box;renderBox();update()});
+document.querySelectorAll("[data-ship]").forEach(b=>b.onclick=()=>{S.shipMode=b.dataset.ship;renderBox();update()});
+document.getElementById("gFix").addEventListener("input",e=>{S.gestion[gKey()].fix=e.target.value;update()});
+document.getElementById("gPct").addEventListener("input",e=>{S.gestion[gKey()].pct=e.target.value;update()});
+document.getElementById("taxFree").onclick=()=>{S.taxFree=!S.taxFree;renderBox();update()};
+document.getElementById("reset").onclick=()=>{S=structuredClone(DEFAULTS);document.querySelectorAll("input[data-k]").forEach(i=>i.value=get(i.dataset.k));renderBox();update()};
+
+/* ---------- résultats ---------- */
+function update(){
+  save();
+  const M=calcMailbox(S.buy), E=calcEbay(S.buy);
+  const diff=E.total-M.total;
+  document.getElementById("taxCalc").textContent=`= ${usd(n(S.buy.total)*n(S.buy.tax)/100)}`;
+  document.getElementById("chips").innerHTML=`<span><b>${(M.nC/M.nP).toLocaleString("fr-FR",{maximumFractionDigits:1})}</b> carte(s) par colis</span><span><b>${usd(n(S.buy.total)/M.nC)}</b> par carte</span><span><b>${usd(n(S.buy.shipUS)/M.nP)}</b> de port US par colis</span>`;
+
+  const v=document.getElementById("verdict");
+  if(diff>0){v.className="verdict win";v.innerHTML=`<div class="lbl">Verdict</div><div class="big">La mailbox te fait économiser ${eur(diff)}</div><div class="sub">soit ${Math.round(diff/E.total*100)} % de moins qu'en eBay direct pour ${M.nC} carte${M.nC>1?"s":""}.</div>`}
+  else {v.className="verdict lose";v.innerHTML=`<div class="lbl">Verdict</div><div class="big">eBay direct reste moins cher de ${eur(-diff)}</div><div class="sub">La mailbox n'est pas encore rentable avec ${M.nC} carte${M.nC>1?"s":""}.</div>`}
+
+  document.getElementById("estim").innerHTML=`
+    <div><small>Poids du colis</small><b>${Math.round(M.weight)} g</b></div>
+    <div><small>Port vers la France</small><b>${eur(M.parts.portIntl)}</b></div>
+    <div><small>Droits + frais UE</small><b>${eur(M.parts.droits+M.parts.fraisUE)}</b></div>
+    <div><small>TVA + gestion</small><b>${eur(M.parts.tva+M.parts.gestion)}</b></div>`;
+  document.getElementById("shipWarn").textContent=M.ship.warn;
+
+  const tb=document.getElementById("totBox"), te=document.getElementById("totEbay");
+  tb.querySelector(".v").textContent=eur(M.total); te.querySelector(".v").textContent=eur(E.total);
+  tb.querySelector(".pc").textContent=`${eur(M.total/M.nC)} / carte · 1 envoi`;
+  te.querySelector(".pc").textContent=`${eur(E.total/E.nC)} / carte · ${E.nP} colis`;
+  tb.classList.toggle("best",diff>0); te.classList.toggle("best",diff<=0);
+
+  const addM=(M.total-M.parts.cartes)/M.nC, addE=(E.total-E.parts.cartes)/E.nC;
+  document.getElementById("perCard").innerHTML=`<div class="t">Coût ajouté par carte (en plus de son prix)</div>
+    <div class="row"><span><span class="dot" style="background:var(--box)"></span> Via mailbox</span><b>${eur(addM)}</b></div>
+    <div class="row sub"><span>dont frais de mailbox seuls</span><b>${eur(M.parts.mailbox/M.nC)}</b></div>
+    <div class="row sub"><span>dont port, taxes et frais d'import</span><b>${eur((M.total-M.parts.cartes-M.parts.mailbox)/M.nC)}</b></div>
+    <div class="row"><span><span class="dot" style="background:var(--ebay)"></span> eBay direct</span><b>${eur(addE)}</b></div>`;
+  const max=Math.max(M.total,E.total,1);
+  const bar=R=>Object.keys(LABELS).map(k=>R.parts[k]>0.004?`<i title="${LABELS[k][0]} : ${eur(R.parts[k])}" style="width:${R.parts[k]/max*100}%;background:${LABELS[k][1]}"></i>`:"").join("");
+  document.getElementById("bars").innerHTML=`
+    <div class="barrow"><div class="h"><span>Mailbox</span><span>${eur(M.total)}</span></div><div class="bar">${bar(M)}</div></div>
+    <div class="barrow"><div class="h"><span>eBay direct</span><span>${eur(E.total)}</span></div><div class="bar">${bar(E)}</div></div>`;
+  const used=Object.keys(LABELS).filter(k=>M.parts[k]>0.004||E.parts[k]>0.004);
+  document.getElementById("legend").innerHTML=used.map(k=>`<span><i style="background:${LABELS[k][1]}"></i>${LABELS[k][0]}</span>`).join("");
+  document.getElementById("detail").innerHTML=`<tr><th></th><th>Mailbox</th><th>eBay</th></tr>`+
+    Object.keys(LABELS).map(k=>`<tr><td>${LABELS[k][0]}</td><td>${eur(M.parts[k])}</td><td>${eur(E.parts[k])}</td></tr>`).join("")+
+    `<tr class="sum"><td>Total</td><td>${eur(M.total)}</td><td>${eur(E.total)}</td></tr>`+
+    `<tr><td>Coût ajouté par carte</td><td>${eur(addM)}</td><td>${eur(addE)}</td></tr>`;
+  drawChart(M);
+}
+
+/* ---------- seuil de rentabilité ---------- */
+function drawChart(M0){
+  const b=norm(S.buy);
+  const avg={price:b.total/b.nC, shipUS:b.shipUS/b.nP, shipEbay:b.shipEbay};
+  const N=20, pts=[];
+  for(let i=1;i<=N;i++){const P={nCards:i,nPkg:i,total:avg.price*i,shipUS:avg.shipUS*i,tax:b.tax,shipEbay:avg.shipEbay};pts.push({i,m:calcMailbox(P).total,e:calcEbay(P).total})}
+  const be=pts.find(p=>p.m<p.e);
+  const pe=eur(avg.price*n(S.cust.fx));
+  document.getElementById("beHint").innerHTML = be
+    ? `Avec une carte moyenne à ${pe}, chacune achetée chez un vendeur différent, la mailbox devient rentable dès <span class="pill">${be.i} carte${be.i>1?"s":""}</span> par envoi.`
+    : `Avec une carte moyenne à ${pe}, la mailbox ne devient pas rentable avant ${N} cartes avec ces réglages.`;
+  const W=520,H=260,L=48,R=12,T=14,B=30;
+  const ymax=Math.max(...pts.map(p=>Math.max(p.m,p.e)))*1.05;
+  const x=i=>L+(i-1)/(N-1)*(W-L-R), y=v=>T+(1-v/ymax)*(H-T-B);
+  const step=niceStep(ymax/4);
+  let g="";
+  for(let v=0;v<=ymax;v+=step) g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#ece4d4"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${v>=1000?(v/1000).toLocaleString("fr-FR")+" k":v} €</text>`;
+  [1,5,10,15,20].forEach(i=>g+=`<text x="${x(i)}" y="${H-10}" text-anchor="middle">${i}</text>`);
+  g+=`<text x="${W-R}" y="${H-10}" text-anchor="end" style="font-weight:600">cartes →</text>`;
+  const line=(k,c)=>`<path d="${pts.map((p,j)=>(j?"L":"M")+x(p.i)+","+y(p[k])).join("")}" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+  if(be) g+=`<rect x="${x(be.i)}" y="${T}" width="${W-R-x(be.i)}" height="${H-T-B}" fill="#d8f1e7" opacity=".45"/><line x1="${x(be.i)}" x2="${x(be.i)}" y1="${T}" y2="${H-B}" stroke="#13795b" stroke-dasharray="4 4"/><text x="${Math.min(x(be.i)+6,W-110)}" y="${T+14}" style="fill:#13795b;font-weight:700">rentable dès ${be.i}</text>`;
+  g+=line("e","#3657d6")+line("m","#e4572e");
+  g+=`<line id="hov" y1="${T}" y2="${H-B}" stroke="#1c2633" stroke-opacity=".25" style="display:none"/><rect id="hit" x="${L}" y="${T}" width="${W-L-R}" height="${H-T-B}" fill="transparent"/>`;
+  const svg=document.getElementById("chart"); svg.innerHTML=g;
+  const tip=document.getElementById("tip"), hov=svg.querySelector("#hov");
+  const move=ev=>{
+    const r=svg.getBoundingClientRect(); const px=(ev.clientX-r.left)/r.width*W;
+    const i=Math.min(N,Math.max(1,Math.round((px-L)/(W-L-R)*(N-1)+1))); const p=pts[i-1];
+    hov.setAttribute("x1",x(i));hov.setAttribute("x2",x(i));hov.style.display="";
+    tip.style.opacity=1; tip.style.left=Math.min(Math.max(x(i)/W*r.width,70),r.width-70)+"px"; tip.style.top=(y(Math.max(p.m,p.e))/H*r.height)+"px";
+    tip.innerHTML=`<b>${i} carte${i>1?"s":""}</b><br><span style="color:#ff9b7d">●</span> Mailbox ${eur(p.m)}<br><span style="color:#9fb2ff">●</span> eBay ${eur(p.e)}`;
+  };
+  const hit=svg.querySelector("#hit");
+  hit.addEventListener("pointermove",move); hit.addEventListener("pointerdown",move);
+  hit.addEventListener("pointerleave",()=>{tip.style.opacity=0;hov.style.display="none"});
+}
+function niceStep(s){const p=Math.pow(10,Math.floor(Math.log10(s||1)));const m=s/p;return (m<1.5?1:m<3?2:m<7?5:10)*p}
+
+renderBox();update();
+</script>
+</body>
+</html>
